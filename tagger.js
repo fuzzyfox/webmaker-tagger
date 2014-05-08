@@ -86,7 +86,7 @@
 
 	function selectedTagsOutput() {
 		if($('#tagger-output').length) {
-			$('#tagger-output').val(selectedTags.join(', '));
+			$('#tagger-output').val(selectedTags.join(', ')).trigger('change');
 		}
 	}
 
