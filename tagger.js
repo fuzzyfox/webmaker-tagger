@@ -127,6 +127,6 @@
 			return item !== tag;
 		});
 		$(this).remove();
-		console.log(selectedTags);
+		selectedTagsOutput()
 	});
 }());
