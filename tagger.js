@@ -74,7 +74,7 @@
 
 		if(wlc.term(tag.value)){
 			tag.label = wlc.term(tag.value);
-			$('#weblit-tag').append('<a class="btn btn-primary auto-tag" style="background-color:' + wlc.color(tag.value) + '" data-tag="' + (tag.value) + '">' + tag.label + ' <span class="fa fa-times"></span></a>');
+			$('#weblit-tag').append('<a class="btn btn-primary auto-tag" data-tag="' + (tag.value) + '">' + tag.label + ' <span class="fa fa-times"></span></a>');
 		}
 		else {
 			$('#tag').append('<a class="btn btn-primary auto-tag" data-tag="' + (tag.value) + '">#' + tag.label + ' <span class="fa fa-times"></span></a>');
