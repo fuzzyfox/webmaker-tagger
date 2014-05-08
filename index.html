@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Tagger</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.4/css/jquery-ui.min.css">
+	<link rel="stylesheet" href="https://stuff.webmaker.org/makerstrap/v0.1.7/makerstrap.complete.min.css">
+	<link rel="stylesheet" href="tagger.css">
+</head>
+<body>
+	<div class="container">
+		<h2 class="text-center page-header">Tagger</h2>
+		<div class="row">
+			<div class="col-sm-6 col-sm-offset-3">
+				<p>
+					<select name="" id="language" class="form-control"></select>
+				</p>
+				<div class="tags-wrapper">
+					<div class="tag-wrapper-input">
+						<div class="input-group"><input type="text" class="form-control" id="tagger"></div>
+					</div>
+					<h4>Web Literacy Tags:</h4>
+					<div id="weblit-tag"></div>
+					<h4>Contextual Tags:</h4>
+					<div id="tag"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
+	<script src="https://rawgit.com/mozilla/web-literacy-client/master/dist/web-literacy-client.with-langs.js"></script>
+	<script src="tagger.js"></script>
+</body>
+</html>
