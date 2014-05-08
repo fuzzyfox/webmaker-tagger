@@ -9,7 +9,13 @@
 	var tagInput = $('#tagger');
 
 	function setWLCSuggestions(lang) {
-		wlc.lang(lang);
+		if( wlc.lang(lang) ){
+			$('#language').val(lang);
+		}
+		else {
+			$('#language').val('en-US');
+		}
+
 		wlcSuggestions = wlc.all().map(function(item) {
 			return {
 				label: item.term,
@@ -20,6 +26,10 @@
 
 		$('[id$=tag] .btn').each(function(i, el) {
 			$(el).html(wlc.term(el.getAttribute('data-tag')));
+		});
+
+		$('.weblit-title').each(function(i, el) {
+			$(this).text(wlc.title());
 		});
 
 		tagInput.autocomplete('option', 'source', autocompleteSource);
@@ -101,8 +111,8 @@
 		setWLCSuggestions(this.value);
 	});
 
-	$('#language').val('en-US');
-	setWLCSuggestions('en-US');
+	var userLang = navigator.language || navigator.userLanguage;
+	setWLCSuggestions(userLang || 'en-US');
 
 	$('[id$=tag]').on('click', '.btn', function() {
 		var tag = this.getAttribute('data-tag');
