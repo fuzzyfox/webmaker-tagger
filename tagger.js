@@ -80,7 +80,14 @@
 			$('#tag').append('<a class="btn btn-primary auto-tag" data-tag="' + (tag.value) + '">#' + tag.label + ' <span class="fa fa-times"></span></a>');
 		}
 		selectedTags.push(tag.value);
+		selectedTagsOutput();
 		tagInput.val('');
+	}
+
+	function selectedTagsOutput() {
+		if($('#tagger-output').length) {
+			$('#tagger-output').val(selectedTags.join(', '));
+		}
 	}
 
 	tagInput.autocomplete({
