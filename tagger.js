@@ -1,5 +1,5 @@
 /* global jQuery */
-(function( window, document, $, undef) {
+(function( window, document, $) {
 	'use strict';
 
 	// get user language
