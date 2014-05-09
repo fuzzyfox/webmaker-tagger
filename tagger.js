@@ -1,22 +1,55 @@
-/* global $, WebLiteracyClient */
-(function(){
+/* global jQuery */
+(function( window, document, $, undef) {
 	'use strict';
 
-	var wlc = new WebLiteracyClient();
+	// get user language
+	var userLang = window.navigator.language || window.navigator.userLanguage || 'en-US';
 
-	var wlcSuggestions = [];
-	var selectedTags = [];
-	var tagInput = $('#tagger');
+	// WMTagger constructor
+	function WMTagger( initObj, callback ){
+		var self = this;
 
-	function setWLCSuggestions(lang) {
-		if( wlc.lang(lang) ){
-			$('#language').val(lang);
+		// create caches for commonly used elements
+		self._input = $( initObj.input ) || undef;
+		self._output = $( initObj.output ) || undef;
+		self._display = $( initObj.display ) || undef;
+
+		// check that an input + output were set (required)
+		if( ( self._input.length !== 1 ) || ( self._output.length !== 1 ) ) {
+			return console.error( 'WMTagger requires an input + output text field' );
+		}
+
+		// check that a wrapper for displaying tags was set
+		if( self._display.length !== 1 ) {
+			self._display = $('<div class="wmtagger-tags"/>');
+			self._input.after( self._display );
 		}
 		else {
-			$('#language').val('en-US');
+			self._display.addClass('wmtagger-tags');
 		}
 
-		wlcSuggestions = wlc.all().map(function(item) {
+		// create spans for weblit + contextual tags (weblit takes priority)
+		self._mixTags = initObj.mixTags || false;
+		if( !self._mixTags ) {
+			self._display.append( '<span class="wmtagger-weblit-tags"/>' );
+		}
+
+		// init WebLit Client
+		self.wlc = new window.WebLiteracyClient();
+
+		// setup l10n w/ our best guess (fallback to en-US)
+		if( initObj.lang && self.wlc.lang( initObj.lang ) ) {
+			self.lang = initObj.lang;
+		}
+		else if( self.wlc.lang( userLang ) ) {
+			self.lang = userLang;
+		}
+		else {
+			self.lang = 'en-US';
+		}
+
+		// get weblit tags and map them to needed format
+		self._wlcTags = self.wlc.all().map( function( item ) {
 			return {
 				label: item.term,
 				value: item.tag,
@@ -24,109 +57,129 @@
 			};
 		});
 
-		$('[id$=tag] .btn').each(function(i, el) {
-			$(el).html(wlc.term(el.getAttribute('data-tag')));
-		});
+		// custom autocomplete source
+		// merge weblit tags + known tags from makeapi
+		function autocompleteSource( request, response ) {
+			// filter weblit tags w/ simple regex
+			var term = $.ui.autocomplete.escapeRegex( request.term );
+			var regex = new RegExp( '^(weblit-?)?' + term, 'i' );
+			var weblitTags = [];
 
-		$('.weblit-title').each(function(i, el) {
-			$(this).text(wlc.title());
-		});
-
-		tagInput.autocomplete('option', 'source', autocompleteSource);
-	}
-
-	function autocompleteSource(request, response) {
-		function buildResponse(makeapiTags){
-			var term = $.ui.autocomplete.escapeRegex(request.term);
-			var regex = new RegExp(term, 'i');
-			var wlcTags = [];
-
-			wlcSuggestions.forEach(function(item){
-				if(regex.test(item.label) || (/^weblit/i.test(term) && regex.test(item.value))){
-					wlcTags.push(item);
+			self._wlcTags.forEach( function( wlcTag ) {
+				if( regex.test( wlcTag.label ) || regex.test( wlcTag.value ) ) {
+					weblitTags.push( wlcTag );
 				}
 			});
 
-			response(wlcTags.concat(makeapiTags));
+			// get tags already in the make-api
+			$.getJSON( 'https://makeapi.webmaker.org/api/20130724/make/tags?t=' + request.term, function( data ) {
+				// format resposne as needed
+				var makeapiTags = data.tags.map( function( makeTag ) {
+					return {
+						label: decodeURIComponent(makeTag.term),
+						value: decodeURIComponent(makeTag.term),
+						data: makeTag
+					};
+				});
+
+				response( weblitTags.concat(  makeapiTags ) );
+			});
 		}
 
-		// combine weblit tags + known tags
-		$.getJSON('https://makeapi.webmaker.org/api/20130724/make/tags?t=' + request.term, function(data){
-			buildResponse(data.tags.map(function(item){
-				return {
-					label: decodeURIComponent(item.term),
-					value: decodeURIComponent(item.term),
-					data: item
+		// init the autocomplete
+		self._input.autocomplete( {
+			source: autocompleteSource,
+			minLength: initObj.minLength || 1,
+			focus: function() {
+				self._input.off( 'blur', function( event ) {
+					self.addTag( event );
+				});
+			},
+			close: function() {
+				self._input.on( 'blur', function( event ) {
+					self.addTag( event );
+				});
+			}
+		});
+
+		// add tag on [enter] or [tab] keys
+		self._input.on( 'keydown', function( event ) {
+			if( event.which === 13 || event.which === 188 ) {
+				event.preventDefault();
+				self.addTag( event );
+			}
+		});
+
+		// add tag on blur
+		self._input.on( 'blur', function( event ) {
+			self.addTag( event );
+		});
+
+		// remove visible tags on click
+		self._display.on( 'click', '.btn', function() {
+			var tag = $( this ).data( 'tag' );
+			self._tagList = $.grep( self._tagList, function( item ) {
+				return item !== tag;
+			});
+
+			$( this ).remove();
+			self._output.val( self._tagList.join( ', ' ) ).trigger( 'change' );
+		});
+
+		// if set, run callback so third parties can further modify the ui
+		if( typeof callback === 'function' ) {
+			callback.call( window, self );
+		}
+
+		return self;
+	}
+
+	WMTagger.prototype = {
+		_tagList: [],
+		addTag: function( tag ) {
+			var self = this;
+
+			// check if tag is an event and ignore if so
+			// replace the event w/ the value of the input field as tag
+			if( tag.eventPhase ) {
+				tag = {
+					label: self.wlc.term( self._input.val() ) || self._input.val(),
+					value: self._input.val()
 				};
-			}));
-		});
-	}
+			}
 
-	function addTag(){
-		if(tagInput.val() === '') {
-			return;
-		}
+			// check that there is actually a tag to add
+			if( tag.value === '' ) {
+				return;
+			}
 
-		var tag = {
-			label: tagInput.val(),
-			value: tagInput.val()
-		};
+			// ensure that there is both a label and value
+			if( tag.label === '' ) {
+				tag.label = tag.value;
+			}
 
-		if(wlc.term(tag.value)){
-			tag.label = wlc.term(tag.value);
-			$('#weblit-tag').append('<a class="btn btn-primary auto-tag" data-tag="' + (tag.value) + '">' + tag.label + ' <span class="fa fa-times"></span></a>');
-		}
-		else {
-			$('#tag').append('<a class="btn btn-primary auto-tag" data-tag="' + (tag.value) + '">#' + tag.label + ' <span class="fa fa-times"></span></a>');
-		}
-		selectedTags.push(tag.value);
-		selectedTagsOutput();
-		tagInput.val('');
-	}
+			// add tag to tag list, and output field
+			self._tagList.push( tag.value );
+			self._output.val( self._tagList.join( ', ' ) ).trigger( 'change' );
 
-	function selectedTagsOutput() {
-		if($('#tagger-output').length) {
-			$('#tagger-output').val(selectedTags.join(', ')).trigger('change');
-		}
-	}
+			// local cache for tag wrapper
+			var tagWrapper = self._display;
 
-	tagInput.autocomplete({
-		source: autocompleteSource,
-		minLength: 1,
-		focus: function () {
-			tagInput.off('blur', addTag);
+			// should we be mixing tags, if not seperate out the weblit tags
+			if( !self._mixTags && self.wlc.term( tag.value ) ) {
+				tagWrapper = self._display.find( '.wmtagger-weblit-tags:first' );
+			}
+
+			// display the tag
+			tagWrapper.append('<a class="btn btn-primary auto-tag" data-tag="' + tag.value + '">' + tag.label + ' <span class="fa fa-times"></span></a>');
+
+			// empty the input field
+			self._input.val('');
 		},
-		close: function () {
-			tagInput.on('blur', addTag);
+		getTags: function() {
+			return JSON.parse( JSON.stringify( this._tagList ) );
 		}
-	});
+	};
 
-	tagInput.on('keydown', function(e){
-		if(e.which === 13 || e.which === 188) {
-			e.preventDefault();
-			addTag();
-		}
-	});
-
-	tagInput.on('blur', addTag);
-
-	wlc.supportedLangs().forEach(function(lang) {
-		$('#language').append('<option value="' + lang +'">' + lang +'</option>');
-	});
-
-	$('#language').change(function() {
-		setWLCSuggestions(this.value);
-	});
-
-	var userLang = navigator.language || navigator.userLanguage;
-	setWLCSuggestions(userLang || 'en-US');
-
-	$('[id$=tag]').on('click', '.btn', function() {
-		var tag = this.getAttribute('data-tag');
-		selectedTags = $.grep(selectedTags, function(item) {
-			return item !== tag;
-		});
-		$(this).remove();
-		selectedTagsOutput()
-	});
-}());
+	window.WMTagger = WMTagger;
+})(this, document, jQuery);
