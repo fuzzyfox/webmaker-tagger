@@ -8,7 +8,7 @@
 	/**
 	 * Add autocomplete to specified input combining weblit tags + context tags.
 	 *
-	 * initObj = {
+	 * options = {
 	 *   input: '#tagger', // set input text field [req]
 	 *   output: '#tagger-output', // set output text field [req]
 	 *   display: '#tagger-display', // set wrapper for tag display
@@ -16,19 +16,19 @@
 	 *   lang: 'en-US' // initialize the language to use for weblit tags
 	 * }
 	 *
-	 * @param {Object}   initObj  initialization settings + options
+	 * @param {Object}   options  initialization settings + options
 	 * @param {Function} callback a callback to run once initialized
 	 */
-	function WMTagger( initObj, callback ){
+	function WMTagger( options, callback ){
 		var self = this;
 
 		// define the list of selected tags
 		self._tagList = [];
 
 		// create caches for commonly used elements
-		self._input = $( initObj.input );
-		self._output = $( initObj.output );
-		self._display = $( initObj.display );
+		self._input = $( options.input );
+		self._output = $( options.output );
+		self._display = $( options.display );
 
 		// check that an input + output were set (required)
 		if( ( self._input.length !== 1 ) || ( self._output.length !== 1 ) ) {
@@ -43,7 +43,7 @@
 		self._display.addClass('wmtagger-tags');
 
 		// create spans for weblit + contextual tags (weblit takes priority)
-		self._mixTags = initObj.mixTags || false;
+		self._mixTags = options.mixTags || false;
 		if( !self._mixTags ) {
 			self._display.append( '<span class="wmtagger-weblit-tags"/>' );
 		}
@@ -52,8 +52,8 @@
 		self.wlc = new window.WebLiteracyClient();
 
 		// setup l10n w/ our best guess (fallback to en-US)
-		if( initObj.lang && self.wlc.lang( initObj.lang ) ) {
-			self.lang = initObj.lang;
+		if( options.lang && self.wlc.lang( options.lang ) ) {
+			self.lang = options.lang;
 		}
 		else if( self.wlc.lang( userLang ) ) {
 			self.lang = userLang;
@@ -109,7 +109,7 @@
 		// init the autocomplete
 		self._input.autocomplete( {
 			source: autocompleteSource,
-			minLength: initObj.minLength || 1,
+			minLength: options.minLength || 1,
 			focus: function() {
 				self._input.off( 'blur', function( event ) {
 					self.addTag( event );
