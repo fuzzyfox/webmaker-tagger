@@ -62,11 +62,11 @@
 		function autocompleteSource( request, response ) {
 			// filter weblit tags w/ simple regex
 			var term = $.ui.autocomplete.escapeRegex( request.term );
-			var regex = new RegExp( '^(weblit-?)?' + term, 'i' );
+			var regex = new RegExp( term, 'i' );
 			var weblitTags = [];
 
 			self._wlcTags.forEach( function( wlcTag ) {
-				if( regex.test( wlcTag.label ) || regex.test( wlcTag.value ) ) {
+				if( regex.test( wlcTag.label ) || ( /^weblit/i.test( term ) && regex.test( wlcTag.value ) ) ) {
 					weblitTags.push( wlcTag );
 				}
 			});
